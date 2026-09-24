@@ -1,0 +1,17 @@
+# accelerate launch --config_file configs/accelerate_zero3.yaml --num_processes N -m watermark_tuner.train.rl ...
+# DeepSpeed ZeRO-3 shards the frozen base weights across ranks (56 GB / N per GPU), so 2x 80 GB
+# trainer GPUs have plenty of headroom. TRL gathers parameters when syncing weights to vLLM.
+compute_environment: LOCAL_MACHINE
+distributed_type: DEEPSPEED
+mixed_precision: bf16
+num_machines: 1
+num_processes: 2
+machine_rank: 0
+main_training_function: main
+rdzv_backend: static
+same_network: true
+use_cpu: false
+downcast_bf16: 'no'
+deepspeed_config:
+  deepspeed_config_file: configs/zero3.json
+  zero3_init_flag: false

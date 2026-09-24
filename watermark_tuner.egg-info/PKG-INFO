@@ -1,0 +1,14 @@
+Metadata-Version: 2.4
+Name: watermark_tuner
+Version: 0.1.0
+Summary: Fine-tune Qwen3.8-27B on Tinker to rewrite text with an embedded unigram (red/black) watermark for EU AI Act Art. 50 compliance.
+Requires-Python: <3.14,>=3.11
+Requires-Dist: tinker>=0.23.0
+Requires-Dist: tinker-cookbook @ git+https://github.com/thinking-machines-lab/tinker-cookbook.git
+Requires-Dist: chz>=0.4.0
+Requires-Dist: datasets>=2.14.0
+Requires-Dist: numpy>=1.24.0
+Requires-Dist: torch>=2.10
+Requires-Dist: transformers!=5.4.*,!=5.5.0,!=5.5.1,!=5.5.2,!=5.5.3,<=5.5.4,>=4.57.6
+Requires-Dist: sentence-transformers>=3.0.0
+Requires-Dist: tqdm>=4.60.0
