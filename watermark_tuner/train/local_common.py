@@ -10,8 +10,17 @@ import torch
 # assistant turn starts right after the empty <think></think> block (same as the Tinker renderer).
 CHAT_KWARGS: dict = {"enable_thinking": False}
 
-# Adapter goes on every linear layer of the language model (attention, gated-deltanet, MLP);
-# vision tower and lm_head stay frozen.
+# Adapter goes on every linear layer of the language model (attention, gated-deltanet, MLP) AND
+# the unembedding. The student has to memorise an arbitrary half of the vocabulary; a low-rank
+# update on lm_head can carry that split almost directly, whereas hidden-state changes alone
+# cannot represent an arbitrary 248k-way logit bias. (PEFT's "all-linear" excludes lm_head.)
+# Vision tower stays frozen. Names are the Qwen3.5/3.8 module attributes; unknown names are ignored.
+LORA_TARGET_MODULES = [
+    "q_proj", "k_proj", "v_proj", "o_proj",  # full-attention layers
+    "in_proj_qkv", "in_proj_z", "in_proj_a", "in_proj_b", "out_proj",  # gated-deltanet layers
+    "gate_proj", "up_proj", "down_proj",  # MLP
+    "lm_head",
+]  # fmt: skip
 LORA_EXCLUDE_REGEX = r".*(visual|vision|image|mtp).*"
 
 
@@ -31,7 +40,7 @@ def lora_config(rank: int = 32, alpha: int | None = None, dropout: float = 0.0):
         lora_alpha=alpha if alpha is not None else rank,
         lora_dropout=dropout,
         bias="none",
-        target_modules="all-linear",
+        target_modules=list(LORA_TARGET_MODULES),
         exclude_modules=LORA_EXCLUDE_REGEX,
         task_type="CAUSAL_LM",
     )

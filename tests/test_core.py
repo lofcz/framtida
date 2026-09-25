@@ -8,6 +8,7 @@ from __future__ import annotations
 import math
 
 import numpy as np
+import pytest
 
 from watermark_tuner.chunking import chunk_text, join_chunks, paragraph_count
 from watermark_tuner.detect import detect_ids, p_value_from_z, z_score
@@ -91,3 +92,23 @@ def test_hard_checks():
     assert "preamble" in hard_checks(src, "Here is the edited text:\n" + ok_out, cfg)[0]
     assert "empty" in hard_checks(src, "   ", cfg)[0]
     assert any(f.startswith("len_ratio") for f in hard_checks(src, ok_out + " " + ok_out, cfg)[0])
+
+
+def test_power_model():
+    from watermark_tuner.detect import detection_power, expected_z, tokens_needed
+
+    assert expected_z(0.6, 500) == pytest.approx(4.472, abs=1e-3)
+    assert 0.90 < detection_power(0.6, 500, 1e-3) < 0.94
+    assert detection_power(0.55, 500, 1e-5) < 0.05
+    assert detection_power(0.65, 2000, 1e-5) > 0.999
+    n = tokens_needed(0.6, 1e-3, 0.95)
+    assert 500 < n < 600 and detection_power(0.6, n, 1e-3) >= 0.95
+    assert tokens_needed(0.55, 1e-3) > tokens_needed(0.6, 1e-3) > tokens_needed(0.65, 1e-3)
+
+
+def test_verdict_certainty():
+    from watermark_tuner.detect import verdict_certainty
+
+    assert 0.98 < verdict_certainty(0.6, 500) < 0.995
+    assert verdict_certainty(0.55, 500) < verdict_certainty(0.55, 2000) < verdict_certainty(0.6, 2000)
+    assert verdict_certainty(0.65, 4000) > 0.9999

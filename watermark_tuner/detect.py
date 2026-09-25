@@ -48,6 +48,52 @@ def p_value_from_z(z: float) -> float:
     return 0.5 * math.erfc(z / math.sqrt(2.0))
 
 
+def _z_for_tail(prob: float) -> float:
+    from statistics import NormalDist
+
+    return NormalDist().inv_cdf(1.0 - prob)
+
+
+def expected_z(red_fraction: float, n_tokens: int) -> float:
+    """Expected z for a text of ``n_tokens`` from a model with the given red fraction."""
+    return 2.0 * (red_fraction - 0.5) * math.sqrt(n_tokens)
+
+
+def detection_power(red_fraction: float, n_tokens: int, fpr: float = 1e-3) -> float:
+    """P(detect) at the z threshold that gives ``fpr`` on unmarked text, for a marked text of ``n_tokens``.
+
+    Under the alternative the red count is Binomial(n, q), so z ~ N(2(q-1/2)sqrt(n), 4q(1-q)).
+    """
+    from statistics import NormalDist
+
+    mu = expected_z(red_fraction, n_tokens)
+    sd = 2.0 * math.sqrt(red_fraction * (1.0 - red_fraction))
+    return 1.0 - NormalDist().cdf((_z_for_tail(fpr) - mu) / sd)
+
+
+def verdict_certainty(red_fraction: float, n_tokens: int) -> float:
+    """Probability the verdict (marked / not marked) is correct for a document of ``n_tokens``.
+
+    Uses the threshold halfway between the unmarked mean (z = 0) and the marked mean, so misses
+    and false alarms are balanced; returns 1 - max(miss, false_alarm). Roughly Phi((q - 1/2) sqrt(n)).
+    """
+    from statistics import NormalDist
+
+    nd = NormalDist()
+    mu = expected_z(red_fraction, n_tokens)
+    sd = 2.0 * math.sqrt(red_fraction * (1.0 - red_fraction))
+    miss = nd.cdf((mu / 2.0 - mu) / sd)
+    false_alarm = 1.0 - nd.cdf(mu / 2.0)
+    return 1.0 - max(miss, false_alarm)
+
+
+def tokens_needed(red_fraction: float, fpr: float = 1e-3, power: float = 0.95) -> int:
+    """Smallest document length (tokens) at which a marked text is detected with ``power`` at ``fpr``."""
+    sd = 2.0 * math.sqrt(red_fraction * (1.0 - red_fraction))
+    za, zb = _z_for_tail(fpr), _z_for_tail(1.0 - power)
+    return math.ceil(((za + zb * sd) / (2.0 * (red_fraction - 0.5))) ** 2)
+
+
 def detect_ids(
     token_ids: list[int] | np.ndarray,
     mask: np.ndarray,
